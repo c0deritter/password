@@ -1,0 +1,17 @@
+{
+  "name": "password-manager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "crypt.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aes256": "^1.0.4",
+    "eccrypto": "^1.1.1",
+    "inquirer": "^6.4.1",
+    "openpgp": "^4.5.5"
+  }
+}
