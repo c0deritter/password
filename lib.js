@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const openpgp = require('openpgp')
 
 const generateKeyPair = () => {
@@ -102,6 +103,7 @@ const addEntry = (dir, boardName, { entryName, loginName, password, description,
     })
     .then((encrypted) => {
         board.entries.push({
+            id:  crypto.createHash('sha512').update(crypto.randomBytes(512)),
             entryName: entryName, 
             loginName: loginName,
             encryptedPassword: encrypted.encryptedPassword,
@@ -165,6 +167,7 @@ const updateEntry = (dir, boardName, { entryName, loginName, password, descripti
         }
     }).then((encrypted) => {
         const newEntry = {
+            id: entry.id,
             entryName: entryName,
             loginName: loginName || entry.loginName,
             encryptedPassword: encrypted.encryptedPassword,
@@ -173,7 +176,7 @@ const updateEntry = (dir, boardName, { entryName, loginName, password, descripti
         }
     
         const newEntries = board.entries.filter((entry) => {
-            return entry.entryName !== entryName
+            return entry.id !== id
         })
     
         newEntries.push(newEntry)

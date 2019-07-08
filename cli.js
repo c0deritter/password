@@ -70,7 +70,7 @@ const addBoardDialog = () => {
     })
 }
 
-const addAccountDialog = () => {
+const addEntryDialog = () => {
     return inquirer.prompt([{
         type: 'input',
         name: 'name',
