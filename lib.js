@@ -73,7 +73,7 @@ const addBoard = (dir, boardName, password, isMasterManaged = true) => {
     })
 }
 
-const addEntry = (dir, boardName, { entryName, loginName, password, description, tags = [] }) => {
+const addEntry = (dir, boardName, { entryName, loginName, password, description, link, tags = [] }) => {
     if(!isBoardExists(dir, boardName)) {
         console.error('Board does not exist, can not add entry')
     }
@@ -103,11 +103,12 @@ const addEntry = (dir, boardName, { entryName, loginName, password, description,
     })
     .then((encrypted) => {
         board.entries.push({
-            id:  crypto.createHash('sha512').update(crypto.randomBytes(512)),
+            id:  crypto.createHash('sha512').update(crypto.randomBytes(512)).digest('base64'),
             entryName: entryName, 
             loginName: loginName,
             encryptedPassword: encrypted.encryptedPassword,
             encryptedDescription: encrypted.encryptedDescription,
+            link: link,
             tags: tags
         })
     
@@ -115,7 +116,7 @@ const addEntry = (dir, boardName, { entryName, loginName, password, description,
     })
 }
 
-const updateEntry = (dir, boardName, { entryName, loginName, password, description, tags }) => {
+const updateEntry = (dir, boardName, { entryName, loginName, password, description, link, tags }) => {
     if(!isBoardExists()) {
         console.error('Board does not exist, can not update entry')
     }
@@ -172,6 +173,7 @@ const updateEntry = (dir, boardName, { entryName, loginName, password, descripti
             loginName: loginName || entry.loginName,
             encryptedPassword: encrypted.encryptedPassword,
             encryptedDescription: encrypted.encryptedDescription,
+            link: link || entry.link,
             tags: tags || entry.tags
         }
     

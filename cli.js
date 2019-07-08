@@ -7,8 +7,8 @@ const start = () => {
 
     if(!keyboard.isBoardExists(keyboardDir, 'master')) {
         console.log('Create master board')
-        passwordDialog().then((anwsers) => {
-            keyboard.addBoard(keyboardDir, 'master', anwsers.password, false)
+        passwordDialog().then((answers) => {
+            keyboard.addBoard(keyboardDir, 'master', answers.password, false)
         }).then(() => {
            mainMenu()
         })
@@ -18,10 +18,17 @@ const start = () => {
 }
 
 const mainMenu = () => {
-    mainMenuDialog().then((mainMenuAnwsers) => {
-        if(mainMenuAnwsers.mainMenu === 'Add board') {
-            addBoardDialog().then((addBoardAnwsers) => {
-                keyboard.addBoard(keyboardDir, addBoardAnwsers.boardName, addBoardAnwsers.password)
+    mainMenuDialog().then((menuItem) => {
+        if(menuItem === 'Add board') {
+            addBoardDialog().then((addBoardAnswers) => {
+                keyboard.addBoard(keyboardDir, addBoardAnswers.boardName, addBoardAnswers.password)
+            })
+        }
+        if(menuItem === 'Add entry') {
+            selectBoardDialog().then((selectBoard) => {
+                addEntryDialog().then((entry) => {
+                    keyboard.addEntry(keyboardDir, selectBoard, entry)
+                })
             })
         }
     })
@@ -36,13 +43,13 @@ const passwordDialog = () => {
         type: 'password',
         name: 'passwordRepead',
         message: 'Repead'
-    }]).then((anwsers) => {
-        if (anwsers.password !== anwsers.passwordRepead) {
+    }]).then((answers) => {
+        if (answers.password !== answers.passwordRepead) {
             console.log('Password unequal')
             process.exit()
         }
 
-        return anwsers
+        return answers
     })
 }
 
@@ -51,8 +58,8 @@ const mainMenuDialog = () => {
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Add board']
-    }])
+        choices: ['Add board', 'Add entry']
+    }]).then((answer) => answer.mainMenu)
 }
 
 const addBoardDialog = () => {
@@ -60,11 +67,11 @@ const addBoardDialog = () => {
         type: 'input',
         name: 'boardName',
         message: 'Enter board name'
-    }]).then((boardNameAnwser) => { 
-        return passwordDialog().then((passwordAnwser) => {
+    }]).then((boardNameAnswer) => { 
+        return passwordDialog().then((passwordAnswer) => {
             return {
-                boardName: boardNameAnwser.boardName,
-                password: passwordAnwser.password
+                boardName: boardNameAnswer.boardName,
+                password: passwordAnswer.password
             }
         })
     })
@@ -73,28 +80,56 @@ const addBoardDialog = () => {
 const addEntryDialog = () => {
     return inquirer.prompt([{
         type: 'input',
-        name: 'name',
+        name: 'entryName',
         message: 'Enter tool name or provider'
-    },
-    {
-        type: 'input',
-        name: 'description',
-        message: 'Enter description in markdown'
     },
     {
         type: 'input',
         name: 'loginName',
         message: 'Enter login name'
-    }]).then((addAccountAnwser) => {
-        return passwordDialog().then((passwordAnwser) =>{
+    }]).then((entryAnswer) => {
+        return passwordDialog().then((passwordAnswer) =>{
             return {
-                name: addAccountAnwser.name,
-                description: addAccountAnwser,
-                loginName: addAccountAnwser.loginName,
-                password: passwordAnwser.password
+                entryName: entryAnswer.entryName,
+                loginName: entryAnswer.loginName,
+                password: passwordAnswer.password
+            }
+        })
+    }).then((loginAnswers) => {
+        return inquirer.prompt([{
+            type: 'editor',
+            name: 'description',
+            message: 'Enter description in markdown'
+        },{
+            type: 'input',
+            name: 'link',
+            message: 'Link of the website'
+        },{
+            type: 'input',
+            name: 'tags',
+            message: 'Add tags separated by commas'
+        }]).then((metaAnswers) => {
+            return {
+                entryName: loginAnswers.entryName,
+                loginName: loginAnswers.loginName,
+                password: loginAnswers.password,
+                description: metaAnswers.description,
+                link: metaAnswers.link,
+                tags: metaAnswers.tags
             }
         })
     })
+}
+
+const selectBoardDialog = () => {
+    const boardNames = keyboard.getAllBoardNames(keyboardDir)
+    return inquirer.prompt([{
+        type: 'list',
+        name: 'selectBoard',
+        message: 'Select board',
+        choices: boardNames
+    }])
+    .then((selectBoardAnswer) => selectBoardAnswer.selectBoard)
 }
 
 start()
