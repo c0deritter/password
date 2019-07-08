@@ -25,6 +25,10 @@ openpgp.generateKey(options).then((key) => {
         .then((privkeyObject) => {
             return privkeyObject.decrypt('nice').then(() => privkeyObject)
         })
+        .then((privkeyObject) => privkeyObject.armor())
+        .then((decryptedPrivkey) => {
+            return openpgp.key.readArmored(decryptedPrivkey).then((privkey) => privkey.keys[0])
+        })
         .then((privkeyObject) => {
             return openpgp.message.readArmored(ciphertext).then((cipherMessage) => {
                 return {

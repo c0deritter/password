@@ -3,19 +3,14 @@ const path = require('path')
 const crypto = require('crypto')
 const openpgp = require('openpgp')
 
-const generateKeyPair = () => {
+const generateKeyPair = (password) => {
     const options = {
         userIds: [{ name:'Any' }],
         curve: "ed25519",
-        passphrase: 'nice'
+        passphrase: password
     }
     
-    return openpgp.generateKey(options).then((key) => {
-        return {
-            privateKey: key.privateKeyArmored,
-            publicKey: key.publicKeyArmored
-        }
-    })
+    return openpgp.generateKey(options)
 }
 
 const getAllBoardNames = (dir) => {
@@ -47,25 +42,31 @@ const addBoard = (dir, boardName, password, isMasterManaged = true) => {
         process.exit()
     }
 
-    generateKeyPair().then((keys) => {
+    
+    generateKeyPair(password).then((keys) => {
+        const encryptedPrivateKey = keys.privateKeyArmored
+
         if(isMasterManaged) {
             if(!isBoardExists(dir, 'master')) {
                 console.error('Master board does not exist, can not add master managed user')
                 process.exit()
             }
-    
-            addEntry(dir, 'master', {
-                entryName: '#' + boardName,
-                loginName: '#' + boardName,
-                password: keys.privateKey,
-                description: '',
-                tags: ''
+
+            keys.key.decrypt(password).then(() => {
+                addEntry(dir, 'master', {
+                    entryName: '#' + boardName,
+                    loginName: '#' + boardName,
+                    password: keys.key.armor(),
+                    description: '',
+                    tags: ''
+                })
             })
         }
+
         const newBoard = {
             boardName: boardName,
             publicKey: keys.publicKey,
-            privateKey: keys.privateKey,
+            privateKey: encryptedPrivateKey,
             entries: []
         }
     
@@ -188,11 +189,62 @@ const updateEntry = (dir, boardName, { entryName, loginName, password, descripti
     })
 }
 
+const getEntry = (dir, boardName, entryId, privateKeyPassword) => {
+    const boardPath = path.join(dir,boardName + '.board.json')
+    const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
+
+    const entry = board.entries.find((entry) => {
+        return entry.id === entryId
+    })
+
+    return decrypt(board.privateKey, privateKeyPassword, entry.encryptedPassword)
+    .then((password) => {
+        return decrypt(board.privateKey, privateKeyPassword, entry.encryptedDescription)
+        .then((description) => {
+            return {
+                password,
+                description
+            }
+        })
+    })
+    .then((decrypted) => {
+        return {
+            id: entry.id,
+            entryName: entry.entryName,
+            loginName: entry.loginName,
+            password: decrypted.password,
+            description: decrypted.description,
+            link: entry.link,
+            tags: entry.tags
+        }
+    })
+}
+
+const decrypt = (privateKey, password, encrypted) => {
+    return openpgp.key.readArmored(privateKey)
+    .then((privateKey) => privateKey.keys[0])
+    .then((privateKeyObject) => {
+        return privateKeyObject.decrypt(password)
+        .then(() => privateKeyObject)
+    })
+    .then((privateKeyObject) => {
+        return openpgp.message.readArmored(encrypted)
+        .then((encryptedMessage) => {
+            return openpgp.decrypt({
+                message: encryptedMessage,
+                privateKeys: [privateKeyObject]
+            })
+        })
+        .then((result) => result.data)
+    })
+}
+
 module.exports = {
     getAllBoardNames,
     isBoardExists,
     getBoard,
     addBoard,
     addEntry,
-    updateEntry
+    updateEntry,
+    getEntry
 }

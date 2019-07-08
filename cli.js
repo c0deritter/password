@@ -7,7 +7,7 @@ const start = () => {
 
     if(!keyboard.isBoardExists(keyboardDir, 'master')) {
         console.log('Create master board')
-        passwordDialog().then((answers) => {
+        setPasswordDialog().then((answers) => {
             keyboard.addBoard(keyboardDir, 'master', answers.password, false)
         }).then(() => {
            mainMenu()
@@ -25,16 +25,30 @@ const mainMenu = () => {
             })
         }
         if(menuItem === 'Add entry') {
-            selectBoardDialog().then((selectBoard) => {
+            selectBoardDialog().then((selectedBoard) => {
                 addEntryDialog().then((entry) => {
-                    keyboard.addEntry(keyboardDir, selectBoard, entry)
+                    keyboard.addEntry(keyboardDir, selectedBoard, entry)
                 })
+            })
+        }
+        if(menuItem === 'Get entry') {
+            selectBoardDialog()
+            .then((selectedBoard) => {
+                return selectEntryDialog(selectedBoard)
+                .then((entryId) => {
+                    return passwordDialog()
+                    .then((password) => {
+                        return keyboard.getEntry(keyboardDir, selectedBoard, entryId, password)
+                    })
+                })
+            }).then((entry) => {
+                console.log(entry)
             })
         }
     })
 }
 
-const passwordDialog = () => {
+const setPasswordDialog = () => {
     return inquirer.prompt([{
         type: 'password',
         name: 'password',
@@ -58,7 +72,7 @@ const mainMenuDialog = () => {
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Add board', 'Add entry']
+        choices: ['Add board', 'Add entry', 'Get entry']
     }]).then((answer) => answer.mainMenu)
 }
 
@@ -68,7 +82,7 @@ const addBoardDialog = () => {
         name: 'boardName',
         message: 'Enter board name'
     }]).then((boardNameAnswer) => { 
-        return passwordDialog().then((passwordAnswer) => {
+        return setPasswordDialog().then((passwordAnswer) => {
             return {
                 boardName: boardNameAnswer.boardName,
                 password: passwordAnswer.password
@@ -88,7 +102,7 @@ const addEntryDialog = () => {
         name: 'loginName',
         message: 'Enter login name'
     }]).then((entryAnswer) => {
-        return passwordDialog().then((passwordAnswer) =>{
+        return setPasswordDialog().then((passwordAnswer) =>{
             return {
                 entryName: entryAnswer.entryName,
                 loginName: entryAnswer.loginName,
@@ -132,4 +146,26 @@ const selectBoardDialog = () => {
     .then((selectBoardAnswer) => selectBoardAnswer.selectBoard)
 }
 
+const selectEntryDialog = (boardName) => {
+    const board = keyboard.getBoard(keyboardDir, boardName)
+    
+    return inquirer.prompt([{
+        type: 'list',
+        name: 'selectEntry',
+        message: 'Select entry',
+        choices: board.entries.map((entry) => { 
+            return { name: entry.entryName, value: entry.id }
+        })
+    }])
+    .then((answer) => answer.selectEntry)
+}
+
+const passwordDialog = () => {
+    return inquirer.prompt([{
+        type: 'password',
+        name: 'password',
+        message: 'Enter password'
+    }])
+    .then((answer) => answer.password)
+}
 start()
