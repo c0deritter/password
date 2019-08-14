@@ -239,6 +239,29 @@ const decrypt = (privateKey, password, encrypted) => {
     })
 }
 
+const shareBoardKey = (dir, sourceBoard, password, destinationBoard) => {
+    const boardPath = path.join(dir, sourceBoard + '.board.json')
+    const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
+
+    return openpgp.key.readArmored(board.privateKey)
+    .then((privateKeyObject) => privateKeyObject.keys[0])
+    .then((privateKeyObject) => {
+        privateKeyObject.decrypt(password)
+        return privateKeyObject
+    })
+    .then((decryptedPrivateKeyObject) => decryptedPrivateKeyObject.armor())
+    .then((decryptedPrivateKey) => {
+        addEntry(dir, destinationBoard, {
+            entryName: `#${sourceBoard}`,
+            loginName: `#${sourceBoard}`,
+            password: decryptedPrivateKey,
+            description: '',
+            link: '',
+            tags: ''
+        })
+    })
+}
+
 module.exports = {
     getAllBoardNames,
     isBoardExists,
@@ -246,5 +269,6 @@ module.exports = {
     addBoard,
     addEntry,
     updateEntry,
-    getEntry
+    getEntry,
+    shareBoardKey
 }

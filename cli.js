@@ -45,6 +45,20 @@ const mainMenu = () => {
                 console.log(entry)
             })
         }
+        if(menuItem === 'Share board key') {
+            console.log('Source board')
+            selectBoardDialog()
+            .then((sourceBoard) => {
+                passwordDialog()
+                .then((password) => {
+                    console.log('Destination board')
+                    selectBoardDialog([sourceBoard])
+                    .then((destinationBoard) => {
+                        keyboard.shareBoardKey(keyboardDir, sourceBoard, password, destinationBoard)
+                    })
+                })
+            })
+        }
     })
 }
 
@@ -72,7 +86,7 @@ const mainMenuDialog = () => {
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Add board', 'Add entry', 'Get entry']
+        choices: ['Add board', 'Add entry', 'Get entry', 'Share board key']
     }]).then((answer) => answer.mainMenu)
 }
 
@@ -135,8 +149,13 @@ const addEntryDialog = () => {
     })
 }
 
-const selectBoardDialog = () => {
-    const boardNames = keyboard.getAllBoardNames(keyboardDir)
+const selectBoardDialog = (excludes = []) => {
+    const boardNames = keyboard.getAllBoardNames(keyboardDir).filter((boardName) => {
+        return !excludes.some((exclude) => {
+            return boardName === exclude
+        })
+    })
+
     return inquirer.prompt([{
         type: 'list',
         name: 'selectBoard',
