@@ -31,32 +31,27 @@ const mainMenu = () => {
                 })
             })
         }
+        if(menuItem === 'Login') {
+            loginDialog().then(({ board, password }) => {
+                loggedInMenu(board, password)
+            })
+        }
+    })
+}
+
+const loggedInMenu = (board, password) => {
+    loginMenuDialog().then((menuItem) => {
         if(menuItem === 'Get entry') {
-            selectBoardDialog()
-            .then((selectedBoard) => {
-                return selectEntryDialog(selectedBoard)
-                .then((entryId) => {
-                    return passwordDialog()
-                    .then((password) => {
-                        return keyboard.getEntry(keyboardDir, selectedBoard, entryId, password)
-                    })
-                })
-            }).then((entry) => {
+            getEntryDialog(board, password)
+            .then((entry) => {
                 console.log(entry)
             })
         }
         if(menuItem === 'Share board key') {
-            console.log('Source board')
-            selectBoardDialog()
-            .then((sourceBoard) => {
-                passwordDialog()
-                .then((password) => {
-                    console.log('Destination board')
-                    selectBoardDialog([sourceBoard])
-                    .then((destinationBoard) => {
-                        keyboard.shareBoardKey(keyboardDir, sourceBoard, password, destinationBoard)
-                    })
-                })
+            console.log('Destination board')
+            selectBoardDialog([board])
+            .then((destinationBoard) => {
+                keyboard.shareBoardKey(keyboardDir, board, password, destinationBoard)
             })
         }
     })
@@ -86,7 +81,16 @@ const mainMenuDialog = () => {
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Add board', 'Add entry', 'Get entry', 'Share board key']
+        choices: ['Add board', 'Add entry', 'Login']
+    }]).then((answer) => answer.mainMenu)
+}
+
+const loginMenuDialog = () => {
+    return inquirer.prompt([{
+        type: 'list',
+        name: 'mainMenu',
+        message: 'Options',
+        choices: ['Get entry', 'Share board key']
     }]).then((answer) => answer.mainMenu)
 }
 
@@ -102,6 +106,28 @@ const addBoardDialog = () => {
                 password: passwordAnswer.password
             }
         })
+    })
+}
+
+const getEntryDialog = (board, password) => {
+    return keyboard.getAllAccessableEntries(keyboardDir, board, password)
+    .then((groupEntries) => {
+        return inquirer.prompt([{
+            type: 'list',
+            name: 'selectBoard',
+            message: 'Select Board',
+            choices: groupEntries.map((groupEntry) => { return { name: groupEntry.boardName, value: groupEntry }})
+        }])
+    })
+    .then((answer) => answer.selectBoard)
+    .then((board) => {
+        return inquirer.prompt([{
+            type: 'list',
+            name: 'selectEntry',
+            message: 'Select Entry',
+            choices: board.entries.map((entry) => { return { name: entry.entryName, value: entry }})
+        }])
+        .then((answer) => answer.selectEntry)
     })
 }
 
@@ -165,20 +191,6 @@ const selectBoardDialog = (excludes = []) => {
     .then((selectBoardAnswer) => selectBoardAnswer.selectBoard)
 }
 
-const selectEntryDialog = (boardName) => {
-    const board = keyboard.getBoard(keyboardDir, boardName)
-    
-    return inquirer.prompt([{
-        type: 'list',
-        name: 'selectEntry',
-        message: 'Select entry',
-        choices: board.entries.map((entry) => { 
-            return { name: entry.entryName, value: entry.id }
-        })
-    }])
-    .then((answer) => answer.selectEntry)
-}
-
 const passwordDialog = () => {
     return inquirer.prompt([{
         type: 'password',
@@ -186,5 +198,17 @@ const passwordDialog = () => {
         message: 'Enter password'
     }])
     .then((answer) => answer.password)
+}
+
+const loginDialog = () => {
+    return selectBoardDialog()
+    .then((board) => {
+        return passwordDialog().then((password) => {
+            return {
+                password,
+                board
+            } 
+        })
+    })
 }
 start()

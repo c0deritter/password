@@ -188,17 +188,53 @@ const updateEntry = (dir, boardName, { entryName, loginName, password, descripti
     })
 }
 
-const getEntry = (dir, boardName, entryId, privateKeyPassword) => {
+const getAllAccessableEntries = (dir, boardName, password) => {
     const boardPath = path.join(dir,boardName + '.board.json')
     const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
 
-    const entry = board.entries.find((entry) => {
-        return entry.id === entryId
+    return decryptPrivateKey(board.privateKey, password)
+    .then((privateKey) => {
+        return decryptAllAccessableEntries(dir, boardName, privateKey)
+    })
+}
+
+const decryptAllAccessableEntries = (dir, boardName, privateKey, groupEntries = []) => {
+    const boardPath = path.join(dir,boardName + '.board.json')
+    const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
+
+    const simpleEntryPromises = board.entries.filter((entry) => {
+        return !entry.entryName.match(/^#.*/)
+    }).map((entry) => {
+        return decryptEntry(privateKey, entry)
     })
 
-    return decrypt(board.privateKey, privateKeyPassword, entry.encryptedPassword)
+    return Promise.all(simpleEntryPromises).then((simpleEntries) => {
+        groupEntries.push({
+            boardName: boardName,
+            entries: simpleEntries
+        })
+    })
+    .then(() => {
+        const boardKeyEntries = board.entries.filter((entry) => {
+            return entry.entryName.match(/^#.*/)
+        })
+    
+        decryptBoardPromises = boardKeyEntries.map((entry) => {
+            return decryptEntry(privateKey, entry).then((decrypedEntry) => {
+                return decryptAllAccessableEntries(dir, entry.entryName.replace('#', ''), decrypedEntry.password, groupEntries)
+            })
+        })
+
+        return Promise.all(decryptBoardPromises)
+    }).then(() => {
+        return groupEntries
+    })
+}
+
+const decryptEntry = (privateKey, entry) => {
+    return decrypt(privateKey, entry.encryptedPassword)
     .then((password) => {
-        return decrypt(board.privateKey, privateKeyPassword, entry.encryptedDescription)
+        return decrypt(privateKey, entry.encryptedDescription)
         .then((description) => {
             return {
                 password,
@@ -219,13 +255,21 @@ const getEntry = (dir, boardName, entryId, privateKeyPassword) => {
     })
 }
 
-const decrypt = (privateKey, password, encrypted) => {
+const decryptPrivateKey = (privateKey, password) => {
     return openpgp.key.readArmored(privateKey)
     .then((privateKey) => privateKey.keys[0])
     .then((privateKeyObject) => {
         return privateKeyObject.decrypt(password)
-        .then(() => privateKeyObject)
+        .then(() => privateKeyObject.armor())
+        .then((privateKeyArmored) => {
+            return privateKeyArmored
+        })
     })
+}
+
+const decrypt = (privateKey, encrypted) => {
+    return openpgp.key.readArmored(privateKey)
+    .then((privateKeyObjects) => privateKeyObjects.keys[0])
     .then((privateKeyObject) => {
         return openpgp.message.readArmored(encrypted)
         .then((encryptedMessage) => {
@@ -242,13 +286,7 @@ const shareBoardKey = (dir, sourceBoard, password, destinationBoard) => {
     const boardPath = path.join(dir, sourceBoard + '.board.json')
     const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
 
-    return openpgp.key.readArmored(board.privateKey)
-    .then((privateKeyObject) => privateKeyObject.keys[0])
-    .then((privateKeyObject) => {
-        privateKeyObject.decrypt(password)
-        return privateKeyObject
-    })
-    .then((decryptedPrivateKeyObject) => decryptedPrivateKeyObject.armor())
+    return decryptPrivateKey(board.privateKey, password)
     .then((decryptedPrivateKey) => {
         addEntry(dir, destinationBoard, {
             entryName: `#${sourceBoard}`,
@@ -266,8 +304,8 @@ module.exports = {
     isBoardExists,
     getBoard,
     addBoard,
+    getAllAccessableEntries,
     addEntry,
     updateEntry,
-    getEntry,
     shareBoardKey
 }
