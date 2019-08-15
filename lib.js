@@ -42,7 +42,6 @@ const addBoard = (dir, boardName, password, isMasterManaged = true) => {
         process.exit()
     }
 
-    
     generateKeyPair(password).then((keys) => {
         const encryptedPrivateKey = keys.privateKeyArmored
 
@@ -65,7 +64,7 @@ const addBoard = (dir, boardName, password, isMasterManaged = true) => {
 
         const newBoard = {
             boardName: boardName,
-            publicKey: keys.publicKey,
+            publicKey: keys.publicKeyArmored,
             privateKey: encryptedPrivateKey,
             entries: []
         }
