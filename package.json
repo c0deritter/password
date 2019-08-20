@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "aes256": "^1.0.4",
-    "eccrypto": "^1.1.1",
     "inquirer": "^6.4.1",
     "openpgp": "^4.5.5"
   }
