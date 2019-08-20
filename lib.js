@@ -199,6 +199,10 @@ const getAllAccessableEntries = (dir, boardName, password) => {
 }
 
 const decryptAllAccessableEntries = (dir, boardName, privateKey, groupEntries = []) => {
+    if (groupEntries.some((group) => group.boardName == boardName)) {
+        return groupEntries
+    }
+
     const boardPath = path.join(dir,boardName + '.board.json')
     const board = JSON.parse(fs.readFileSync(boardPath, { encoding: 'utf8' }))
 
