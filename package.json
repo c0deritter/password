@@ -1,8 +1,9 @@
 {
-  "name": "password-manager",
+  "name": "keyboard",
   "version": "1.0.0",
   "description": "",
-  "main": "crypt.js",
+  "main": "lib.js",
+  "bin": "./cli.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
