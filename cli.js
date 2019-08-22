@@ -1,14 +1,18 @@
 const inquirer = require('inquirer')
-const keyboard = require('./lib')
+const process = require('process')
+const fs = require('fs')
+const path = require('path')
 
-const keyboardDir = './test'
+// lib.js should run in the browser and in node as well therefore openpgp must be global
+openpgp = require('openpgp')
+
+const { Board } = require('./lib')
 
 const start = () => {
-
-    if(!keyboard.isBoardExists(keyboardDir, 'master')) {
+    if(!boardFileManager.isBoardExists('master')) {
         console.log('Create master board')
         setPasswordDialog().then((answers) => {
-            keyboard.addBoard(keyboardDir, 'master', answers.password, false)
+            boardFileManager.createBoard('master', answers.password, false)
         }).then(() => {
            mainMenu()
         })
@@ -21,37 +25,46 @@ const mainMenu = () => {
     mainMenuDialog().then((menuItem) => {
         if(menuItem === 'Add board') {
             addBoardDialog().then((addBoardAnswers) => {
-                keyboard.addBoard(keyboardDir, addBoardAnswers.boardName, addBoardAnswers.password)
+                boardFileManager.createBoard(addBoardAnswers.boardName, addBoardAnswers.password)
             })
         }
         if(menuItem === 'Add entry') {
-            selectBoardDialog().then((selectedBoard) => {
+            selectBoardDialog().then((selectedBoardName) => {
                 addEntryDialog().then((entry) => {
-                    keyboard.addEntry(keyboardDir, selectedBoard, entry)
+                    const selectBoard = boardFileManager.getBoard(selectedBoardName)
+                    selectBoard.addEntry(entry)
+                    .then(() => {
+                        boardFileManager.saveBoard(selectBoard)
+                    })
                 })
             })
         }
         if(menuItem === 'Login') {
-            loginDialog().then(({ board, password }) => {
-                loggedInMenu(board, password)
+            loginDialog().then(({ boardName, password }) => {
+                loggedInMenu(boardName, password)
             })
         }
     })
 }
 
-const loggedInMenu = (board, password) => {
+const loggedInMenu = (boardName, password) => {
     loginMenuDialog().then((menuItem) => {
         if(menuItem === 'Get entry') {
-            getEntryDialog(board, password)
+            getEntryDialog(boardName, password)
             .then((entry) => {
                 console.log(entry)
             })
         }
         if(menuItem === 'Share board key') {
             console.log('Destination board')
-            selectBoardDialog([board])
-            .then((destinationBoard) => {
-                keyboard.shareBoardKey(keyboardDir, board, password, destinationBoard)
+            selectBoardDialog([boardName])
+            .then((destinationBoardName) => {
+                const sourceBoard = boardFileManager.getBoard(boardName)
+                const destinationBoard = boardFileManager.getBoard(destinationBoardName)
+
+                sourceBoard.shareBoardKey(password, destinationBoard).then(() => {
+                    boardFileManager.saveBoard(destinationBoard)
+                })
             })
         }
     })
@@ -109,8 +122,8 @@ const addBoardDialog = () => {
     })
 }
 
-const getEntryDialog = (board, password) => {
-    return keyboard.getAllAccessableEntries(keyboardDir, board, password)
+const getEntryDialog = (boardName, password) => {
+    return boardFileManager.getBoard(boardName).getAllAccessableEntries(boardFileManager.boards, password)
     .then((groupEntries) => {
         return inquirer.prompt([{
             type: 'list',
@@ -176,7 +189,9 @@ const addEntryDialog = () => {
 }
 
 const selectBoardDialog = (excludes = []) => {
-    const boardNames = keyboard.getAllBoardNames(keyboardDir).filter((boardName) => {
+    const boardNames = boardFileManager.boards
+    .map((board) => board.boardName)
+    .filter((boardName) => {
         return !excludes.some((exclude) => {
             return boardName === exclude
         })
@@ -202,13 +217,82 @@ const passwordDialog = () => {
 
 const loginDialog = () => {
     return selectBoardDialog()
-    .then((board) => {
+    .then((boardName) => {
         return passwordDialog().then((password) => {
             return {
                 password,
-                board
+                boardName
             } 
         })
     })
 }
+
+class BoardFileManager {
+    constructor(dir) {
+        this.dir = dir
+        this.boards = this.getAllBoards()
+    }
+
+    getAllBoards() {
+        const boardFileNames = fs.readdirSync(this.dir).filter((boardName) => {
+            return boardName.search(/.*.board.json$/gm) !== -1
+        })
+    
+        const boards = boardFileNames.map((fileName) => {
+            const rawBoardObject = JSON.parse(fs.readFileSync(path.join(this.dir, fileName), { encoding: 'utf8' }))
+            return new Board(rawBoardObject.boardName, rawBoardObject.publicKey, rawBoardObject.privateKey, rawBoardObject.entries)  
+        })
+
+        return boards
+    }
+
+    getBoard(boardName) {
+        return this.boards.find((board) => {
+            return board.boardName === boardName
+        })
+    }
+
+    isBoardExists(boardName) {
+        return this.getBoard(boardName) == null ? false : true
+    }
+
+    createBoard(boardName, password, isMasterManaged = true) {
+        if(boardFileManager.isBoardExists(boardName)) {
+            console.error('Board does already exist, can not add board')
+            process.exit()
+        }
+
+        return Board.create(boardName, password).then((newBoard) => {
+            this.saveBoard(newBoard)
+    
+            if (isMasterManaged) {
+                const masterBoard = this.getBoard('master')
+    
+                if(masterBoard == null) {
+                    console.error('Master board does not exist, can not add master managed user')
+                    process.exit()
+                }
+    
+                masterBoard.addEntry({
+                    entryName: '#' + boardName,
+                    loginName: '#' + boardName,
+                    password: newBoard.decryptPrivateKey(password),
+                    description: '',
+                    tags: ''
+                })
+                .then(() => {
+                    boardFileManager.saveBoard(masterBoard)
+                })
+            }
+
+            return newBoard
+        })
+    }
+
+    saveBoard(board) {
+        fs.writeFileSync(path.join(this.dir, board.boardName + '.board.json'), JSON.stringify(board, null, 4))
+    }
+}
+
+const boardFileManager = new BoardFileManager(process.cwd())
 start()
