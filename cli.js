@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const inquirer = require('inquirer')
 const process = require('process')
 const fs = require('fs')
