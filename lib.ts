@@ -1,7 +1,6 @@
 import * as openpgp from 'openpgp'
 
 interface Entry {
-    id?: string,
     entryName: string, 
     loginName: string,
     link: string,
@@ -14,6 +13,7 @@ interface DecryptedEntry extends Entry {
 }
 
 interface EncryptedEntry extends Entry {
+    id: string,
     encryptedPassword: string,
     encryptedDescription: string
 }
@@ -38,7 +38,7 @@ class Board {
     }
 
     private decryptedPrivateKey = ''
-    public isLock = true
+    public isLocked = true
     
     constructor(private name: string, private publicKey: string, private encryptedPrivateKey: string, private entries: EncryptedEntry[]) {}
 
@@ -84,8 +84,7 @@ class Board {
         })
     
         if(!entry) {
-            console.error('Entry does not exist, can not update entry')
-            return
+            throw new Error('Entry does not exist, can not update entry')
         }
 
         let encryptedPassword = entry.encryptedPassword
@@ -127,20 +126,19 @@ class Board {
 
     public unlockBoardByPrivateKey(decrypetedPrivateKey: string) {
         this.decryptedPrivateKey = decrypetedPrivateKey
-        this.isLock = false
+        this.isLocked = false
     }
 
     public async unlockBoardByPassword(password: string) {
         const { keys: [ privateKeyObject ] } = <{ keys: openpgp.key.Key[] }>await openpgp.key.readArmored(this.encryptedPrivateKey)
         await privateKeyObject.decrypt(password)
         this.decryptedPrivateKey = privateKeyObject.armor()
-        this.isLock = false
+        this.isLocked = false
     }
 
     public async unlockAllAccessableBoards(boards: Board[]) {
-        if(this.isLock === true) {
-            console.error(`Can not unlock all accessable boards because this board(${this.name}) is locked`)
-            return
+        if(this.isLocked === true) {
+            throw new Error(`Can not unlock all accessable boards because this board(${this.name}) is locked`)
         }
 
         return this._unlockAllAccessableBoards(boards)
@@ -162,16 +160,22 @@ class Board {
                 }
 
                 unlockingBoards.push(board)
-                const { password: decryptPrivateKey } = await this.decryptEntry(boardKeyEntry)
+                const { password: decryptPrivateKey } = await this.decryptEntry(boardKeyEntry.id)
                 board.unlockBoardByPrivateKey(decryptPrivateKey)
                 return board._unlockAllAccessableBoards(boards, unlockingBoards)
             }
         })).then()
     }
 
-    public async decryptEntry(entry: EncryptedEntry) {
-        if (this.isLock === true) {
-            console.error(`Can not decrypt entry because this board(${this.name}) is locked`)
+    public async decryptEntry(entryId: string) {
+        if (this.isLocked === true) {
+            throw new Error(`Can not decrypt entry because this board(${this.name}) is locked`)
+        }
+
+        const entry = this.entries.find((entry) => entry.id === entryId)
+
+        if (entry == undefined) {
+            throw new Error(`Can not decrypt entry because entry id(${entryId}) not found`)
         }
 
         const password = await this.decrypt(entry.encryptedPassword)
@@ -201,9 +205,8 @@ class Board {
     }
 
     public shareBoardKey(destinationBoard: Board) {
-        if(this.isLock === true) {
-            console.error(`Can not share board key because this board(${this.name}) is locked`)
-            return
+        if(this.isLocked === true) {
+            throw new Error(`Can not share board key because this board(${this.name}) is locked`)
         }
 
         return destinationBoard.addEntry({

@@ -2,17 +2,21 @@
   "name": "keyboard",
   "version": "1.0.0",
   "description": "",
-  "main": "lib.js",
-  "types": "lib.d.ts",
   "bin": "./cli.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build-browser": "tsc -p tsconfig.browser.json",
+    "build-node": "tsc -p tsconfig.node.json",
+    "build": "npm run build-browser && npm run build-node",
+    "watch": "tsc -p tsconfig.browser.json -w& tsc -p tsconfig.node.json -w"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aes256": "^1.0.4",
     "inquirer": "^6.4.1",
     "openpgp": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/openpgp": "^4.4.6",
+    "typescript": "^3.6.3"
   }
 }

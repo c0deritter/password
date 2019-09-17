@@ -5,10 +5,7 @@ const process = require('process')
 const fs = require('fs')
 const path = require('path')
 
-// lib.js should run in the browser and in node as well therefore openpgp must be global
-openpgp = require('openpgp')
-
-const { Board } = require('./lib')
+const { Board } = require('./node/lib')
 
 const start = () => {
     if(!boardFileManager.isBoardExists('master')) {
@@ -52,9 +49,16 @@ const mainMenu = () => {
 const loggedInMenu = (boardName, password) => {
     loginMenuDialog().then((menuItem) => {
         if(menuItem === 'Get entry') {
-            getEntryDialog(boardName, password)
-            .then((entry) => {
-                console.log(entry)
+            const sourceBoard = boardFileManager.getBoard(boardName)
+            sourceBoard.unlockBoardByPassword(password)
+            .then(() => {
+                getEntryDialog(sourceBoard)
+                .then((answers) => {
+                    answers.selectBoard.decryptEntry(answers.selectEntry.id)
+                    .then((decryptedEntry) => {
+                        console.log(decryptedEntry)
+                    })
+                })
             })
         }
         if(menuItem === 'Share board key') {
@@ -64,8 +68,10 @@ const loggedInMenu = (boardName, password) => {
                 const sourceBoard = boardFileManager.getBoard(boardName)
                 const destinationBoard = boardFileManager.getBoard(destinationBoardName)
 
-                sourceBoard.shareBoardKey(password, destinationBoard).then(() => {
-                    boardFileManager.saveBoard(destinationBoard)
+                sourceBoard.unlockBoardByPassword(password).then(() => {
+                    sourceBoard.shareBoardKey(destinationBoard).then(() => {
+                        boardFileManager.saveBoard(destinationBoard)
+                    })
                 })
             })
         }
@@ -124,14 +130,15 @@ const addBoardDialog = () => {
     })
 }
 
-const getEntryDialog = (boardName, password) => {
-    return boardFileManager.getBoard(boardName).getAllAccessableEntries(boardFileManager.boards, password)
-    .then((groupEntries) => {
+const getEntryDialog = (board) => {
+    return board.unlockAllAccessableBoards(boardFileManager.boards)
+    .then(() => {
+        const unlockedBoards = boardFileManager.boards.filter((board) => !board.isLocked)
         return inquirer.prompt([{
             type: 'list',
             name: 'selectBoard',
             message: 'Select Board',
-            choices: groupEntries.map((groupEntry) => { return { name: groupEntry.boardName, value: groupEntry }})
+            choices: unlockedBoards.map((board) => { return { name: board.name, value: board }})
         }])
     })
     .then((answer) => answer.selectBoard)
@@ -142,7 +149,10 @@ const getEntryDialog = (boardName, password) => {
             message: 'Select Entry',
             choices: board.entries.map((entry) => { return { name: entry.entryName, value: entry }})
         }])
-        .then((answer) => answer.selectEntry)
+        .then((answers) => { 
+            answers.selectBoard = board
+            return answers
+         })
     })
 }
 
@@ -184,7 +194,7 @@ const addEntryDialog = () => {
                 password: loginAnswers.password,
                 description: metaAnswers.description,
                 link: metaAnswers.link,
-                tags: metaAnswers.tags
+                tags: metaAnswers.tags.split(',')
             }
         })
     })
@@ -192,7 +202,7 @@ const addEntryDialog = () => {
 
 const selectBoardDialog = (excludes = []) => {
     const boardNames = boardFileManager.boards
-    .map((board) => board.boardName)
+    .map((board) => board.name)
     .filter((boardName) => {
         return !excludes.some((exclude) => {
             return boardName === exclude
@@ -242,7 +252,7 @@ class BoardFileManager {
     
         const boards = boardFileNames.map((fileName) => {
             const rawBoardObject = JSON.parse(fs.readFileSync(path.join(this.dir, fileName), { encoding: 'utf8' }))
-            return new Board(rawBoardObject.boardName, rawBoardObject.publicKey, rawBoardObject.privateKey, rawBoardObject.entries)  
+            return new Board(rawBoardObject.name, rawBoardObject.publicKey, rawBoardObject.encryptedPrivateKey, rawBoardObject.entries)  
         })
 
         return boards
@@ -250,7 +260,7 @@ class BoardFileManager {
 
     getBoard(boardName) {
         return this.boards.find((board) => {
-            return board.boardName === boardName
+            return board.name === boardName
         })
     }
 
@@ -274,17 +284,19 @@ class BoardFileManager {
                     console.error('Master board does not exist, can not add master managed user')
                     process.exit()
                 }
-    
-                masterBoard.addEntry({
-                    entryName: '#' + boardName,
-                    loginName: '#' + boardName,
-                    password: newBoard.decryptPrivateKey(password),
-                    description: '',
-                    tags: ''
-                })
-                .then(() => {
-                    boardFileManager.saveBoard(masterBoard)
-                })
+
+                newBoard.unlockBoardByPassword(password).then(() => {
+                    return masterBoard.addEntry({
+                        entryName: '#' + boardName,
+                        loginName: '#' + boardName,
+                        password: newBoard.decryptPrivateKey,
+                        description: '',
+                        tags: ''
+                    })
+                    .then(() => {
+                        boardFileManager.saveBoard(masterBoard)
+                    })
+                })  
             }
 
             return newBoard
@@ -292,7 +304,7 @@ class BoardFileManager {
     }
 
     saveBoard(board) {
-        fs.writeFileSync(path.join(this.dir, board.boardName + '.board.json'), JSON.stringify(board, null, 4))
+        fs.writeFileSync(path.join(this.dir, board.name + '.board.json'), JSON.stringify(board, null, 4))
     }
 }
 
