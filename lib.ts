@@ -229,6 +229,6 @@ class Board {
     }
 }
 
-module.exports = {
+export {
     Board
 }

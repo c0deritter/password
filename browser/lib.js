@@ -299,7 +299,5 @@ var Board = /** @class */ (function () {
     };
     return Board;
 }());
-module.exports = {
-    Board: Board
-};
+export { Board };
 //# sourceMappingURL=lib.js.map

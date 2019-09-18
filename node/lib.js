@@ -308,7 +308,5 @@ var Board = /** @class */ (function () {
     };
     return Board;
 }());
-module.exports = {
-    Board: Board
-};
+exports.Board = Board;
 //# sourceMappingURL=lib.js.map
