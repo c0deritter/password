@@ -40,7 +40,7 @@ class Board {
     private decryptedPrivateKey = ''
     public isLocked = true
     
-    constructor(private name: string, private publicKey: string, private encryptedPrivateKey: string, private entries: EncryptedEntry[]) {}
+    constructor(public name: string, public publicKey: string, public encryptedPrivateKey: string, public entries: EncryptedEntry[]) {}
 
     // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
     private randomString(length: number) {

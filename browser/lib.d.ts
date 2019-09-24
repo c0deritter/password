@@ -14,10 +14,10 @@ interface EncryptedEntry extends Entry {
     encryptedDescription: string;
 }
 declare class Board {
-    private name;
-    private publicKey;
-    private encryptedPrivateKey;
-    private entries;
+    name: string;
+    publicKey: string;
+    encryptedPrivateKey: string;
+    entries: EncryptedEntry[];
     private static generateKeyPair;
     static create(boardName: string, password: string): Promise<Board>;
     private decryptedPrivateKey;
