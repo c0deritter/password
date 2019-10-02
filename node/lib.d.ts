@@ -48,4 +48,4 @@ declare class Board {
         entries: EncryptedEntry[];
     };
 }
-export { Board };
+export { Board, DecryptedEntry, EncryptedEntry };

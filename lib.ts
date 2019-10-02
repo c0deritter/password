@@ -230,5 +230,7 @@ class Board {
 }
 
 export {
-    Board
+    Board,
+    DecryptedEntry,
+    EncryptedEntry
 }
