@@ -1,5 +1,5 @@
-# Keyboard.js
-Keyboard.js is a lightweight cli password managment tool based on OpenPGP writen in Javascript.
+# Password.js
+Password.js is a lightweight cli password managment tool based on OpenPGP writen in Javascript.
 
 ## Usage
 ```
