@@ -1,5 +1,5 @@
 {
-  "name": "keyboard",
+  "name": "password",
   "version": "1.0.0",
   "description": "",
   "bin": "./cli.js",
