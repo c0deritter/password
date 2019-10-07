@@ -43,6 +43,9 @@ const mainMenu = () => {
                 loggedInMenu(boardName, password)
             })
         }
+        if(menuItem === 'Exit') {
+            process.exit()
+        }
     })
 }
 
@@ -102,7 +105,7 @@ const mainMenuDialog = () => {
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Add board', 'Add entry', 'Login']
+        choices: ['Add board', 'Add entry', 'Login', 'Exit']
     }]).then((answer) => answer.mainMenu)
 }
 
