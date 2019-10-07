@@ -50,9 +50,9 @@ const mainMenu = () => {
 }
 
 const loggedInMenu = (boardName, password) => {
-    loginMenuDialog().then((menuItem) => {
+    const sourceBoard = boardFileManager.getBoard(boardName)
+    loginMenuDialog(sourceBoard).then((menuItem) => {
         if(menuItem === 'Get entry') {
-            const sourceBoard = boardFileManager.getBoard(boardName)
             sourceBoard.unlockBoardByPassword(password)
             .then(() => {
                 getEntryDialog(sourceBoard)
@@ -68,13 +68,23 @@ const loggedInMenu = (boardName, password) => {
             console.log('Destination board')
             selectBoardDialog([boardName])
             .then((destinationBoardName) => {
-                const sourceBoard = boardFileManager.getBoard(boardName)
                 const destinationBoard = boardFileManager.getBoard(destinationBoardName)
 
                 sourceBoard.unlockBoardByPassword(password).then(() => {
                     sourceBoard.shareBoardKey(destinationBoard).then(() => {
                         boardFileManager.saveBoard(destinationBoard)
                     })
+                })
+            })
+        }
+        if (menuItem == 'Reset Password') {
+            const masterBoard = boardFileManager.getBoard('master')
+            masterBoard.unlockBoardByPassword(password)
+            resetPasswordDialog(masterBoard).then((answers) => {
+                const board = boardFileManager.getBoard(answers.decryptedMasterBoardEntry.entryName.replace('#', ''))
+                board.encryptAndSetPrivateKey(answers.decryptedMasterBoardEntry.password, answers.password)
+                .then(() => {
+                    boardFileManager.saveBoard(board)
                 })
             })
         }
@@ -109,12 +119,16 @@ const mainMenuDialog = () => {
     }]).then((answer) => answer.mainMenu)
 }
 
-const loginMenuDialog = () => {
+const loginMenuDialog = (sourceBoard) => {
+    let choices = ['Get entry', 'Share board key']
+    if(sourceBoard.name === 'master') {
+        choices = ['Get entry', 'Reset Password']
+    }
     return inquirer.prompt([{
         type: 'list',
         name: 'mainMenu',
         message: 'Options',
-        choices: ['Get entry', 'Share board key']
+        choices: choices
     }]).then((answer) => answer.mainMenu)
 }
 
@@ -160,6 +174,31 @@ const getEntryDialog = (board) => {
             answers.selectBoard = board
             return answers
          })
+    })
+}
+
+const resetPasswordDialog = (masterBoard) => {
+    if (masterBoard == undefined) {
+        console.log('master board not found')
+    }
+
+    return inquirer.prompt([{
+        type: 'list',
+        name: 'masterBoardEntry',
+        message: 'Select board',
+        choices: masterBoard.entries.map((entry) => { return { name: entry.entryName.replace('#', ''), value: entry }})
+    }])
+    .then((resetBoardAnswer) => {
+        return setPasswordDialog()
+        .then((passwordAnswer) => {
+            return masterBoard.decryptEntry(resetBoardAnswer.masterBoardEntry.id)
+            .then((decryptedEntry) => {
+                return {
+                    decryptedMasterBoardEntry: decryptedEntry,
+                    password: passwordAnswer.password
+                }
+            })
+        })
     })
 }
 
@@ -297,7 +336,7 @@ class BoardFileManager {
                     return masterBoard.addEntry({
                         entryName: '#' + boardName,
                         loginName: '#' + boardName,
-                        password: newBoard.decryptPrivateKey,
+                        password: newBoard.decryptedPrivateKey,
                         description: '',
                         tags: ''
                     })

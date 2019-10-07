@@ -41,6 +41,7 @@ declare class Board {
     }>;
     private decrypt;
     shareBoardKey(destinationBoard: Board): Promise<void>;
+    encryptAndSetPrivateKey(decryptedPrivateKey: string, password: string): Promise<void>;
     toJSON(): {
         name: string;
         publicKey: string;

@@ -289,6 +289,23 @@ var Board = /** @class */ (function () {
             tags: []
         });
     };
+    Board.prototype.encryptAndSetPrivateKey = function (decryptedPrivateKey, password) {
+        return __awaiter(this, void 0, void 0, function () {
+            var privateKeyObject;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, openpgp.key.readArmored(decryptedPrivateKey)];
+                    case 1:
+                        privateKeyObject = (_a.sent()).keys[0];
+                        return [4 /*yield*/, privateKeyObject.encrypt(password)];
+                    case 2:
+                        _a.sent();
+                        this.encryptedPrivateKey = privateKeyObject.armor();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     Board.prototype.toJSON = function () {
         return {
             name: this.name,

@@ -219,6 +219,12 @@ class Board {
         })
     }
 
+    public async encryptAndSetPrivateKey(decryptedPrivateKey: string, password: string) {
+        const { keys: [privateKeyObject] } = await openpgp.key.readArmored(decryptedPrivateKey)
+        await privateKeyObject.encrypt(password)
+        this.encryptedPrivateKey = privateKeyObject.armor()
+    }
+
     public toJSON() {
         return {
             name: this.name,
