@@ -146,6 +146,10 @@ const getEntryDialog = (board) => {
     })
     .then((answer) => answer.selectBoard)
     .then((board) => {
+        if(board.entries.length === 0) {
+            console.log('No Entry')
+            process.exit()
+        }
         return inquirer.prompt([{
             type: 'list',
             name: 'selectEntry',
