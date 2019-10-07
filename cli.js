@@ -276,6 +276,7 @@ class BoardFileManager {
 
         return Board.create(boardName, password).then((newBoard) => {
             this.saveBoard(newBoard)
+            this.boards.push(newBoard)
     
             if (isMasterManaged) {
                 const masterBoard = this.getBoard('master')
