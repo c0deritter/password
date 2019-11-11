@@ -1,15 +1,17 @@
 # Password.js
 Password.js is a lightweight CLI password managment tool based on OpenPGP written in JavaScript.
 
-## Usage
+## Install
 ```
-npm install --global git+https://gitlab.coderitter.io/lean-tools/password-manager.git
-mkdir boards
-cd boards
-# Optionally create a new git repo to versioning and backup your boards to your private remote git server like gitlab
-git init
-password
+npm install --global git+https://github.com/c0deritter/password.git
 ```
+
+## Getting started
+Choose a directory where to put your passwords.
+
+## Versioning and remote storage
+Use your favourite source control management tool to have a history and a remote storage location.
+
 ## Technical Details
 
 Password.js organize your keys/passwords in a JSON file container so called board. Every board has a name, an encrypted private key, a password, a public key and entries. The encryption chain is this, the password encrypts the private key and the private key, in turn, encrypts the entries.
