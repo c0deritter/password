@@ -1,6 +1,6 @@
 import { KeyFile } from "../lib"
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 
 export default class FileManager {
     private readonly fileExtension = 'keyFile.json'

@@ -3,12 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "bin": "./cli.js",
+  "main": "/built/lib.js",
   "scripts": {
-    "build-browser": "tsc -p lib/tsconfig.browser.json",
-    "build-node": "tsc -p lib/tsconfig.node.json",
-    "build-cli": "tsc -p cli/tsconfig.json",
-    "build": "npm run build-browser && npm run build-node && npm run build-cli",
-    "watch": "tsc -p lib/tsconfig.browser.json -w& tsc -p lib/tsconfig.node.json -w& tsc -p lib/tsconfig.node.json -w"
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "author": "",
   "license": "ISC",
