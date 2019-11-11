@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -34,9 +36,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-import * as openpgp from 'openpgp';
-var Board = /** @class */ (function () {
-    function Board(name, publicKey, encryptedPrivateKey, entries) {
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var openpgp = __importStar(require("openpgp"));
+var KeyFile = /** @class */ (function () {
+    function KeyFile(name, publicKey, encryptedPrivateKey, entries) {
         this.name = name;
         this.publicKey = publicKey;
         this.encryptedPrivateKey = encryptedPrivateKey;
@@ -44,7 +54,7 @@ var Board = /** @class */ (function () {
         this.decryptedPrivateKey = '';
         this.isLocked = true;
     }
-    Board.generateKeyPair = function (password) {
+    KeyFile.generateKeyPair = function (password) {
         var options = {
             userIds: [{ name: 'Any' }],
             curve: "ed25519",
@@ -52,14 +62,15 @@ var Board = /** @class */ (function () {
         };
         return openpgp.generateKey(options);
     };
-    Board.create = function (boardName, password) {
-        return Board.generateKeyPair(password).then(function (keys) {
+    KeyFile.create = function (keyFileName, password) {
+        var _this = this;
+        return this.generateKeyPair(password).then(function (keys) {
             var encryptedPrivateKey = keys.privateKeyArmored;
-            return new Board(boardName, keys.publicKeyArmored, encryptedPrivateKey, []);
+            return new _this(keyFileName, keys.publicKeyArmored, encryptedPrivateKey, []);
         });
     };
     // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-    Board.prototype.randomString = function (length) {
+    KeyFile.prototype.randomString = function (length) {
         var result = '';
         var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         var charactersLength = characters.length;
@@ -68,7 +79,7 @@ var Board = /** @class */ (function () {
         }
         return result;
     };
-    Board.prototype.addEntry = function (_a) {
+    KeyFile.prototype.addEntry = function (_a) {
         var entryName = _a.entryName, loginName = _a.loginName, password = _a.password, description = _a.description, link = _a.link, _b = _a.tags, tags = _b === void 0 ? [] : _b;
         return __awaiter(this, void 0, void 0, function () {
             var publicKeys, encryptedPassword, encryptedDescription;
@@ -103,7 +114,7 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.updateEntry = function (entryId, _a) {
+    KeyFile.prototype.updateEntry = function (entryId, _a) {
         var entryName = _a.entryName, loginName = _a.loginName, password = _a.password, description = _a.description, link = _a.link, tags = _a.tags;
         return __awaiter(this, void 0, void 0, function () {
             var entry, encryptedPassword, encryptedDescription, publicKeys, newEntry;
@@ -156,11 +167,11 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.unlockBoardByPrivateKey = function (decrypetedPrivateKey) {
+    KeyFile.prototype.unlockKeyFileByPrivateKey = function (decrypetedPrivateKey) {
         this.decryptedPrivateKey = decrypetedPrivateKey;
         this.isLocked = false;
     };
-    Board.prototype.unlockBoardByPassword = function (password) {
+    KeyFile.prototype.unlockKeyFileByPassword = function (password) {
         return __awaiter(this, void 0, void 0, function () {
             var privateKeyObject;
             return __generator(this, function (_a) {
@@ -178,58 +189,14 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.unlockAllAccessableBoards = function (boards) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                if (this.isLocked === true) {
-                    throw new Error("Can not unlock all accessable boards because this board(" + this.name + ") is locked");
-                }
-                return [2 /*return*/, this._unlockAllAccessableBoards(boards)];
-            });
-        });
-    };
-    Board.prototype._unlockAllAccessableBoards = function (boards, unlockingBoards) {
-        if (unlockingBoards === void 0) { unlockingBoards = []; }
-        return __awaiter(this, void 0, void 0, function () {
-            var boardKeyEntries;
-            var _this = this;
-            return __generator(this, function (_a) {
-                boardKeyEntries = this.entries.filter(function (entry) {
-                    return entry.entryName.match(/^#.*/);
-                });
-                return [2 /*return*/, Promise.all(boardKeyEntries.map(function (boardKeyEntry) { return __awaiter(_this, void 0, void 0, function () {
-                        var board, decryptPrivateKey;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0:
-                                    board = boards.find(function (board) {
-                                        return board.name === boardKeyEntry.entryName.replace('#', '');
-                                    });
-                                    if (!board) return [3 /*break*/, 2];
-                                    if (unlockingBoards.some(function (unlockingBoard) { return unlockingBoard.name === board.name; })) {
-                                        return [2 /*return*/];
-                                    }
-                                    unlockingBoards.push(board);
-                                    return [4 /*yield*/, this.decryptEntry(boardKeyEntry.id)];
-                                case 1:
-                                    decryptPrivateKey = (_a.sent()).password;
-                                    board.unlockBoardByPrivateKey(decryptPrivateKey);
-                                    return [2 /*return*/, board._unlockAllAccessableBoards(boards, unlockingBoards)];
-                                case 2: return [2 /*return*/];
-                            }
-                        });
-                    }); })).then()];
-            });
-        });
-    };
-    Board.prototype.decryptEntry = function (entryId) {
+    KeyFile.prototype.decryptEntry = function (entryId) {
         return __awaiter(this, void 0, void 0, function () {
             var entry, password, description;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (this.isLocked === true) {
-                            throw new Error("Can not decrypt entry because this board(" + this.name + ") is locked");
+                            throw new Error("Can not decrypt entry because this key file(" + this.name + ") is locked");
                         }
                         entry = this.entries.find(function (entry) { return entry.id === entryId; });
                         if (entry == undefined) {
@@ -254,7 +221,7 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.decrypt = function (encrypted) {
+    KeyFile.prototype.decrypt = function (encrypted) {
         return __awaiter(this, void 0, void 0, function () {
             var privateKeyObject, encryptedMessage, decrypted;
             return __generator(this, function (_a) {
@@ -276,20 +243,7 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.shareBoardKey = function (destinationBoard) {
-        if (this.isLocked === true) {
-            throw new Error("Can not share board key because this board(" + this.name + ") is locked");
-        }
-        return destinationBoard.addEntry({
-            entryName: "#" + this.name,
-            loginName: "#" + this.name,
-            password: this.decryptedPrivateKey,
-            description: '',
-            link: '',
-            tags: []
-        });
-    };
-    Board.prototype.encryptAndSetPrivateKey = function (decryptedPrivateKey, password) {
+    KeyFile.prototype.updatePrivateKey = function (decryptedPrivateKey, password) {
         return __awaiter(this, void 0, void 0, function () {
             var privateKeyObject;
             return __generator(this, function (_a) {
@@ -306,7 +260,23 @@ var Board = /** @class */ (function () {
             });
         });
     };
-    Board.prototype.toJSON = function () {
+    KeyFile.prototype.shareEntry = function (entryId, userSafe) {
+        return __awaiter(this, void 0, void 0, function () {
+            var decryptEntry;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.decryptEntry(entryId)];
+                    case 1:
+                        decryptEntry = _a.sent();
+                        return [4 /*yield*/, userSafe.addEntry(decryptEntry)];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    KeyFile.prototype.toJSON = function () {
         return {
             name: this.name,
             publicKey: this.publicKey,
@@ -314,7 +284,7 @@ var Board = /** @class */ (function () {
             entries: this.entries
         };
     };
-    return Board;
+    return KeyFile;
 }());
-export { Board };
-//# sourceMappingURL=lib.js.map
+exports.KeyFile = KeyFile;
+//# sourceMappingURL=index.js.map

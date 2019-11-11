@@ -4,19 +4,21 @@
   "description": "",
   "bin": "./cli.js",
   "scripts": {
-    "build-browser": "tsc -p tsconfig.browser.json",
-    "build-node": "tsc -p tsconfig.node.json",
-    "build": "npm run build-browser && npm run build-node",
-    "watch": "tsc -p tsconfig.browser.json -w& tsc -p tsconfig.node.json -w"
+    "build-browser": "tsc -p lib/tsconfig.browser.json",
+    "build-node": "tsc -p lib/tsconfig.node.json",
+    "build-cli": "tsc -p cli/tsconfig.json",
+    "build": "npm run build-browser && npm run build-node && npm run build-cli",
+    "watch": "tsc -p lib/tsconfig.browser.json -w& tsc -p lib/tsconfig.node.json -w& tsc -p lib/tsconfig.node.json -w"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "inquirer": "^6.4.1",
+    "@types/inquirer": "^6.5.0",
+    "inquirer": "^7.0.0",
     "openpgp": "^4.5.5"
   },
   "devDependencies": {
     "@types/openpgp": "^4.4.6",
-    "typescript": "^3.6.3"
+    "typescript": "^3.7.2"
   }
 }

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as openpgp from 'openpgp'
 
 interface Entry {
@@ -7,18 +8,18 @@ interface Entry {
     tags: string[]
 }
 
-interface DecryptedEntry extends Entry {
+export interface DecryptedEntry extends Entry {
     password: string
     description: string
 }
 
-interface EncryptedEntry extends Entry {
+export interface EncryptedEntry extends Entry {
     id: string,
     encryptedPassword: string,
     encryptedDescription: string
 }
 
-class Board {
+export class KeyFile {
     private static generateKeyPair(password: string) {
         const options = {
             userIds: [{ name:'Any' }],
@@ -29,17 +30,17 @@ class Board {
         return openpgp.generateKey(options)
     }
 
-    public static create(boardName: string, password: string) {
-        return Board.generateKeyPair(password).then((keys) => {
+    public static create(keyFileName: string, password: string) {
+        return this.generateKeyPair(password).then((keys) => {
             const encryptedPrivateKey = keys.privateKeyArmored
 
-            return new Board(boardName, keys.publicKeyArmored, encryptedPrivateKey, [])
+            return new this(keyFileName, keys.publicKeyArmored, encryptedPrivateKey, [])
         })
     }
 
-    private decryptedPrivateKey = ''
+    public decryptedPrivateKey = ''
     public isLocked = true
-    
+
     constructor(public name: string, public publicKey: string, public encryptedPrivateKey: string, public entries: EncryptedEntry[]) {}
 
     // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
@@ -124,52 +125,21 @@ class Board {
         this.entries.push(newEntry)
     }
 
-    public unlockBoardByPrivateKey(decrypetedPrivateKey: string) {
+    public unlockKeyFileByPrivateKey(decrypetedPrivateKey: string) {
         this.decryptedPrivateKey = decrypetedPrivateKey
         this.isLocked = false
     }
 
-    public async unlockBoardByPassword(password: string) {
+    public async unlockKeyFileByPassword(password: string) {
         const { keys: [ privateKeyObject ] } = <{ keys: openpgp.key.Key[] }>await openpgp.key.readArmored(this.encryptedPrivateKey)
         await privateKeyObject.decrypt(password)
         this.decryptedPrivateKey = privateKeyObject.armor()
         this.isLocked = false
     }
 
-    public async unlockAllAccessableBoards(boards: Board[]) {
-        if(this.isLocked === true) {
-            throw new Error(`Can not unlock all accessable boards because this board(${this.name}) is locked`)
-        }
-
-        return this._unlockAllAccessableBoards(boards)
-    }
-
-    public async _unlockAllAccessableBoards(boards: Board[], unlockingBoards: Board[] = []): Promise<void> {
-        const boardKeyEntries = this.entries.filter((entry) => {
-            return entry.entryName.match(/^#.*/)
-        })
-
-        return Promise.all(boardKeyEntries.map(async (boardKeyEntry):Promise<void> => {
-            const board = boards.find((board) => {
-                return board.name === boardKeyEntry.entryName.replace('#', '')
-            })
- 
-            if (board) {
-                if (unlockingBoards.some((unlockingBoard) => unlockingBoard.name === board.name)) {
-                    return
-                }
-
-                unlockingBoards.push(board)
-                const { password: decryptPrivateKey } = await this.decryptEntry(boardKeyEntry.id)
-                board.unlockBoardByPrivateKey(decryptPrivateKey)
-                return board._unlockAllAccessableBoards(boards, unlockingBoards)
-            }
-        })).then()
-    }
-
     public async decryptEntry(entryId: string) {
         if (this.isLocked === true) {
-            throw new Error(`Can not decrypt entry because this board(${this.name}) is locked`)
+            throw new Error(`Can not decrypt entry because this key file(${this.name}) is locked`)
         }
 
         const entry = this.entries.find((entry) => entry.id === entryId)
@@ -204,25 +174,15 @@ class Board {
         return decrypted
     }
 
-    public shareBoardKey(destinationBoard: Board) {
-        if(this.isLocked === true) {
-            throw new Error(`Can not share board key because this board(${this.name}) is locked`)
-        }
-
-        return destinationBoard.addEntry({
-            entryName: `#${this.name}`,
-            loginName: `#${this.name}`,
-            password: this.decryptedPrivateKey,
-            description: '',
-            link: '',
-            tags: []
-        })
-    }
-
-    public async encryptAndSetPrivateKey(decryptedPrivateKey: string, password: string) {
+    public async updatePrivateKey(decryptedPrivateKey: string, password: string) {
         const { keys: [privateKeyObject] } = await openpgp.key.readArmored(decryptedPrivateKey)
         await privateKeyObject.encrypt(password)
         this.encryptedPrivateKey = privateKeyObject.armor()
+    }
+
+    public async shareEntry(entryId: string, userSafe: KeyFile) {
+        const decryptEntry = await this.decryptEntry(entryId)
+        await userSafe.addEntry(decryptEntry)
     }
 
     public toJSON() {
@@ -233,10 +193,4 @@ class Board {
             entries: this.entries
         }
     }
-}
-
-export {
-    Board,
-    DecryptedEntry,
-    EncryptedEntry
 }
