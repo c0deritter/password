@@ -1,8 +1,8 @@
-import { KeyFile } from "../lib"
+import { KeyFile } from "./KeyFileModel"
 import * as fs from 'fs'
 import * as path from 'path'
 
-export default class FileManager {
+export default class KeyFileLogic {
     private readonly fileExtension = 'keyFile.json'
     public keyFiles: KeyFile[]
 

@@ -1,16 +1,18 @@
+#!/usr/bin/env node
+
 import inquierer, { Question, ListQuestion } from 'inquirer'
-import { KeyFile, DecryptedEntry } from '../lib'
-import KeyFileManager from './FileManager'
+import { KeyFile, DecryptedEntry } from '../KeyFileModel'
+import KeyFileLogic from '../KeyFileLogic'
 
 class CLI {
-    constructor(private keyFileManager: KeyFileManager) {}
+    constructor(private keyFileLogic: KeyFileLogic) {}
 
     private async setup() {
-        if(!this.keyFileManager.isKeyFileExists('master')) {
+        if(!this.keyFileLogic.isKeyFileExists('master')) {
             console.log('Create master key file')
 
             let password = await (new SetPasswordQuestion).ask()
-            await this.keyFileManager.createKeyFile('master', password, false)
+            await this.keyFileLogic.createKeyFile('master', password, false)
         }
     }
 
@@ -34,16 +36,16 @@ class CLI {
         let keyFileName = await (new GetKeyFileNameQuestion).ask()
         let password = await (new SetPasswordQuestion).ask()
 
-        await this.keyFileManager.createKeyFile(keyFileName, password)
+        await this.keyFileLogic.createKeyFile(keyFileName, password)
     }
 
     private async addEntry() {
-        let keyFile  = await (new SelectKeyFile(this.keyFileManager)).ask()
+        let keyFile  = await (new SelectKeyFile(this.keyFileLogic)).ask()
         let entry = await (new SetEntryQuestion).ask()
 
         await keyFile.addEntry(entry)
 
-        this.keyFileManager.saveKeyFile(keyFile)
+        this.keyFileLogic.saveKeyFile(keyFile)
     }
 
     private exit() {
@@ -51,7 +53,7 @@ class CLI {
     }
 
     private async login() {
-        let keyFile = await (new SelectKeyFile(this.keyFileManager)).ask()
+        let keyFile = await (new SelectKeyFile(this.keyFileLogic)).ask()
         let password = await (new GetPasswordQuestion).ask()
 
         await keyFile.unlockKeyFileByPassword(password)
@@ -74,12 +76,12 @@ class CLI {
 
     private async shareEntry(sourceKeyFile: KeyFile) {
         let entryId = await (new SelectEntryQuestion(sourceKeyFile)).ask()
-        let destinationKeyFile = await (new SelectKeyFile(this.keyFileManager, ['master', sourceKeyFile.name])).ask()
+        let destinationKeyFile = await (new SelectKeyFile(this.keyFileLogic, ['master', sourceKeyFile.name])).ask()
 
         let entry = await sourceKeyFile.decryptEntry(entryId)
         await destinationKeyFile.addEntry(entry)
 
-        this.keyFileManager.saveKeyFile(destinationKeyFile)
+        this.keyFileLogic.saveKeyFile(destinationKeyFile)
     }
 
     public async resetPassword(masterKeyFile: KeyFile) {
@@ -87,7 +89,7 @@ class CLI {
         let password = await (new SetPasswordQuestion).ask()
 
         let entry = await masterKeyFile.decryptEntry(entryId)
-        let targetKeyFile = this.keyFileManager.getKeyFile(entry.entryName)
+        let targetKeyFile = this.keyFileLogic.getKeyFile(entry.entryName)
 
         if (targetKeyFile == undefined) {
             console.error('Target key file does not exist, can not reset password')
@@ -95,7 +97,7 @@ class CLI {
         }
 
         targetKeyFile.updatePrivateKey(entry.password, password)
-        this.keyFileManager.saveKeyFile(targetKeyFile)
+        this.keyFileLogic.saveKeyFile(targetKeyFile)
     }
 }
 
@@ -179,7 +181,7 @@ class SelectKeyFile {
         .map((keyFile) => { return { name: keyFile.name, value: keyFile }})
     }]
 
-    constructor(private keyFileManager: KeyFileManager, private exclude: string[] = []) {}
+    constructor(private keyFileManager: KeyFileLogic, private exclude: string[] = []) {}
 
     public async ask(): Promise<KeyFile> {
         let answer = await inquierer.prompt(this.config)
@@ -281,4 +283,4 @@ class SetEntryQuestion {
     }
 }
 
-(new CLI(new KeyFileManager(process.cwd()))).start()
+(new CLI(new KeyFileLogic('keyFiles'))).start()

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import * as openpgp from 'openpgp'
 
 interface Entry {
