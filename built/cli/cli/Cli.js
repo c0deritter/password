@@ -254,8 +254,8 @@ class SetPasswordQuestion extends GetPasswordQuestion {
         super();
         this.config.push({
             type: 'password',
-            name: 'passwordRepead',
-            message: 'Repead'
+            name: 'passwordRepeat',
+            message: 'Repeat'
         });
     }
     ask() {
