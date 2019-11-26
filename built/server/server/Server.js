@@ -9,11 +9,11 @@ const fs_1 = __importDefault(require("fs"));
 class Server {
     constructor() {
         this.app = express_1.default();
-        this.keyFileLogic = new KeyFileLogic_1.default('keyFiles');
     }
     init() {
         this.app.get('/keyFile/:keyFileName', (req, res) => {
-            let keyFile = this.keyFileLogic.getKeyFile(req.params.keyFileName);
+            let keyFileLogic = new KeyFileLogic_1.default('keyFiles');
+            let keyFile = keyFileLogic.getKeyFile(req.params.keyFileName);
             if (keyFile == null) {
                 res.status(404);
             }

@@ -4,11 +4,11 @@ import fs from 'fs'
 
 class Server {
     private app: Express = express()
-    private keyFileLogic = new KeyFileLogic('keyFiles')
 
     public init() {
         this.app.get('/keyFile/:keyFileName', (req, res) => {
-            let keyFile = this.keyFileLogic.getKeyFile(req.params.keyFileName)
+            let keyFileLogic = new KeyFileLogic('keyFiles')
+            let keyFile = keyFileLogic.getKeyFile(req.params.keyFileName)
 
             if(keyFile == null) {
                 res.status(404)
