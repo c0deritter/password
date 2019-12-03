@@ -63,7 +63,7 @@ class CLI {
     }
     addEntry() {
         return __awaiter(this, void 0, void 0, function* () {
-            let keyFile = yield (new SelectKeyFile(this.keyFileLogic)).ask();
+            let keyFile = yield (new SelectKeyFileQuestion(this.keyFileLogic)).ask();
             let entry = yield (new SetEntryQuestion).ask();
             yield keyFile.addEntry(entry);
             this.keyFileLogic.saveKeyFile(keyFile);
@@ -74,7 +74,7 @@ class CLI {
     }
     login() {
         return __awaiter(this, void 0, void 0, function* () {
-            let keyFile = yield (new SelectKeyFile(this.keyFileLogic)).ask();
+            let keyFile = yield (new SelectKeyFileQuestion(this.keyFileLogic)).ask();
             let password = yield (new GetPasswordQuestion).ask();
             yield keyFile.unlockKeyFileByPassword(password);
             let loginOption = yield (new LoginMenuQuestion(keyFile)).ask();
@@ -82,8 +82,8 @@ class CLI {
                 case LoginMenuOptions.GetEntry:
                     yield this.getEntry(keyFile);
                     break;
-                case LoginMenuOptions.ShareKey:
-                    yield this.shareEntry(keyFile);
+                case LoginMenuOptions.ShareKeys:
+                    yield this.shareEntries(keyFile);
                     break;
                 case LoginMenuOptions.ResetPassword:
                     yield this.resetPassword(keyFile);
@@ -98,12 +98,12 @@ class CLI {
             console.log(entry);
         });
     }
-    shareEntry(sourceKeyFile) {
+    shareEntries(sourceKeyFile) {
         return __awaiter(this, void 0, void 0, function* () {
-            let entryId = yield (new SelectEntryQuestion(sourceKeyFile)).ask();
-            let destinationKeyFile = yield (new SelectKeyFile(this.keyFileLogic, ['master', sourceKeyFile.name])).ask();
-            let entry = yield sourceKeyFile.decryptEntry(entryId);
-            yield destinationKeyFile.addEntry(entry);
+            let entryIds = yield (new SelectEntriesQuestion(sourceKeyFile)).ask();
+            let destinationKeyFile = yield (new SelectKeyFileQuestion(this.keyFileLogic, ['master', sourceKeyFile.name])).ask();
+            let entries = yield Promise.all(entryIds.map((entryId) => sourceKeyFile.decryptEntry(entryId)));
+            yield Promise.all(entries.map((entry) => destinationKeyFile.addEntry(entry)));
             this.keyFileLogic.saveKeyFile(destinationKeyFile);
         });
     }
@@ -153,7 +153,7 @@ class MainMenuQuestion {
 var LoginMenuOptions;
 (function (LoginMenuOptions) {
     LoginMenuOptions["GetEntry"] = "GetEntry";
-    LoginMenuOptions["ShareKey"] = "ShareKey";
+    LoginMenuOptions["ShareKeys"] = "ShareKeys";
     LoginMenuOptions["ResetPassword"] = "ResetPassword";
 })(LoginMenuOptions || (LoginMenuOptions = {}));
 class LoginMenuQuestion {
@@ -170,7 +170,7 @@ class LoginMenuQuestion {
                     ] :
                     [
                         { name: 'Get entry', value: LoginMenuOptions.GetEntry },
-                        { name: 'Share key', value: LoginMenuOptions.ShareKey }
+                        { name: 'Share keys', value: LoginMenuOptions.ShareKeys }
                     ]
             }];
     }
@@ -196,7 +196,7 @@ class GetKeyFileNameQuestion {
         });
     }
 }
-class SelectKeyFile {
+class SelectKeyFileQuestion {
     constructor(keyFileManager, exclude = []) {
         this.keyFileManager = keyFileManager;
         this.exclude = exclude;
@@ -224,6 +224,23 @@ class SelectEntryQuestion {
                 type: 'list',
                 name: 'selectEntry',
                 message: 'Select Entry',
+                choices: this.keyFile.entries.map((entry) => { return { name: entry.entryName, value: entry.id }; })
+            }];
+    }
+    ask() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let answer = yield inquirer_1.default.prompt(this.config);
+            return answer[this.config[0].name];
+        });
+    }
+}
+class SelectEntriesQuestion {
+    constructor(keyFile) {
+        this.keyFile = keyFile;
+        this.config = [{
+                type: 'checkbox',
+                name: 'selectEntries',
+                message: 'Select Entries',
                 choices: this.keyFile.entries.map((entry) => { return { name: entry.entryName, value: entry.id }; })
             }];
     }

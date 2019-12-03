@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import inquierer, { Question, ListQuestion } from 'inquirer'
+import inquierer, { Question, ListQuestion, CheckboxQuestion } from 'inquirer'
 import { KeyFile, DecryptedEntry } from '../KeyFileModel'
 import KeyFileLogic from '../KeyFileLogic'
 
@@ -40,7 +40,7 @@ class CLI {
     }
 
     private async addEntry() {
-        let keyFile  = await (new SelectKeyFile(this.keyFileLogic)).ask()
+        let keyFile  = await (new SelectKeyFileQuestion(this.keyFileLogic)).ask()
         let entry = await (new SetEntryQuestion).ask()
 
         await keyFile.addEntry(entry)
@@ -53,7 +53,7 @@ class CLI {
     }
 
     private async login() {
-        let keyFile = await (new SelectKeyFile(this.keyFileLogic)).ask()
+        let keyFile = await (new SelectKeyFileQuestion(this.keyFileLogic)).ask()
         let password = await (new GetPasswordQuestion).ask()
 
         await keyFile.unlockKeyFileByPassword(password)
@@ -62,7 +62,7 @@ class CLI {
 
         switch (loginOption) {
             case LoginMenuOptions.GetEntry: await this.getEntry(keyFile); break
-            case LoginMenuOptions.ShareKey: await this.shareEntry(keyFile); break
+            case LoginMenuOptions.ShareKeys: await this.shareEntries(keyFile); break
             case LoginMenuOptions.ResetPassword: await this.resetPassword(keyFile); break
         }
     }
@@ -74,12 +74,12 @@ class CLI {
         console.log(entry)
     }
 
-    private async shareEntry(sourceKeyFile: KeyFile) {
-        let entryId = await (new SelectEntryQuestion(sourceKeyFile)).ask()
-        let destinationKeyFile = await (new SelectKeyFile(this.keyFileLogic, ['master', sourceKeyFile.name])).ask()
+    private async shareEntries(sourceKeyFile: KeyFile) {
+        let entryIds = await (new SelectEntriesQuestion(sourceKeyFile)).ask()
+        let destinationKeyFile = await (new SelectKeyFileQuestion(this.keyFileLogic, ['master', sourceKeyFile.name])).ask()
 
-        let entry = await sourceKeyFile.decryptEntry(entryId)
-        await destinationKeyFile.addEntry(entry)
+        let entries = await Promise.all(entryIds.map((entryId) => sourceKeyFile.decryptEntry(entryId)))
+        await Promise.all(entries.map((entry) => destinationKeyFile.addEntry(entry)))
 
         this.keyFileLogic.saveKeyFile(destinationKeyFile)
     }
@@ -129,7 +129,7 @@ class MainMenuQuestion {
 
 enum LoginMenuOptions {
     GetEntry = 'GetEntry',
-    ShareKey = 'ShareKey',
+    ShareKeys = 'ShareKeys',
     ResetPassword = 'ResetPassword'
 }
 
@@ -145,7 +145,7 @@ class LoginMenuQuestion {
         ] :
         [
             { name: 'Get entry', value: LoginMenuOptions.GetEntry },
-            { name: 'Share key', value: LoginMenuOptions.ShareKey }
+            { name: 'Share keys', value: LoginMenuOptions.ShareKeys }
         ]
     }]
 
@@ -170,7 +170,7 @@ class GetKeyFileNameQuestion {
     }
 }
 
-class SelectKeyFile {
+class SelectKeyFileQuestion {
     public config: Question[] = <ListQuestion[]> [{
         type: 'list',
         name: 'selectKeyFile',
@@ -200,6 +200,22 @@ class SelectEntryQuestion {
     constructor(private keyFile: KeyFile) {}
 
     public async ask(): Promise<string> {
+        let answer = await inquierer.prompt(this.config)
+        return answer[<string>this.config[0].name]
+    }
+}
+
+class SelectEntriesQuestion {
+    public config: Question[] = <CheckboxQuestion[]> [{
+        type: 'checkbox',
+        name: 'selectEntries',
+        message: 'Select Entries',
+        choices: this.keyFile.entries.map((entry) => { return { name: entry.entryName, value: entry.id } })
+    }]
+
+    constructor(private keyFile: KeyFile) {}
+
+    public async ask(): Promise<string[]> {
         let answer = await inquierer.prompt(this.config)
         return answer[<string>this.config[0].name]
     }
