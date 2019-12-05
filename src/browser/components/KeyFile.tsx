@@ -47,7 +47,7 @@ export default class KeyFile extends React.Component<KeyFileProps, KeyFileState>
     private table() {
         if (this.state.entries.length > 0) {
             return (
-                <table style={{ borderSpacing: '10px' }}>
+                <table style={{ borderSpacing: '10px', tableLayout: 'auto', width: '100%' }}>
                     <tr>
                         <th style={{ textAlign: 'start' }}><strong>provider</strong></th>
                         <th style={{ textAlign: 'start' }}><strong>login name</strong></th>
