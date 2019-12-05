@@ -13,7 +13,10 @@ export default class KeyFile extends React.Component<KeyFileProps, KeyFileState>
     decryptEntries(keyFile: KeyFileModel): Promise<void>;
     componentDidMount(): void;
     componentWillReceiveProps(nextProps: KeyFileProps): void;
+    private linkField;
+    private clipableField;
     private copyIcon;
+    private linkIcon;
     private passwordFieldStyle;
     private copyToClipboard;
 }
